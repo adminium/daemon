@@ -11,7 +11,6 @@ var (
 )
 
 type Config struct {
-	LogDir          string           `toml:"log_dir"`
 	Shell           string           `toml:"shell"`
 	RestartInterval string           `toml:"restart_interval"`
 	Processes       []*ProcessConfig `toml:"processes"`
@@ -26,11 +25,6 @@ func (c *Config) getShell() string {
 }
 
 func (c *Config) parse() (err error) {
-
-	if c.LogDir == "" {
-		err = fmt.Errorf("log dir is required")
-		return
-	}
 
 	if c.RestartInterval != "" {
 		c.restartInterval, err = time.ParseDuration(c.RestartInterval)
@@ -71,6 +65,8 @@ type ProcessConfig struct {
 	Name            string `toml:"name"`
 	Command         string `toml:"command"`
 	RestartInterval string `toml:"restart_interval"`
+	StopSignal      string `toml:"stop_signal"`
+	StopWaitSeconds int    `toml:"stop_wait_seconds"`
 	restartInterval time.Duration
 }
 

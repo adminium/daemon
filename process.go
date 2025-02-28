@@ -5,15 +5,16 @@ import (
 	"github.com/adminium/logger"
 	"os"
 	"os/exec"
+	"sync/atomic"
 	"time"
 )
 
 type processArgs struct {
 	name            string
-	logDir          string
 	command         string
 	restartInterval time.Duration
 	shell           string
+	stopped         *atomic.Bool
 }
 
 type Process struct {
@@ -46,12 +47,16 @@ Start:
 	_, err = p.Cmd.Process.Wait()
 	if err != nil {
 		p.log.Errorf("wait process error: %s", err)
-		time.Sleep(p.restartInterval)
 	}
 	err = p.Cmd.Process.Kill()
 	if err == nil {
 		p.log.Errorf("kill process error: %s", err)
 	}
+
+	if p.stopped.Load() {
+		return
+	}
+
 	p.log.Infof("restrt process after: %s", p.restartInterval)
 	time.Sleep(p.restartInterval)
 
