@@ -3,6 +3,7 @@ package daemon
 import (
 	"fmt"
 	"github.com/adminium/logger"
+	"os"
 	"os/exec"
 	"time"
 )
@@ -12,6 +13,7 @@ type processArgs struct {
 	logDir          string
 	command         string
 	restartInterval time.Duration
+	shell           string
 }
 
 type Process struct {
@@ -20,7 +22,7 @@ type Process struct {
 	log *logger.Logger
 }
 
-func NewProcess(args processArgs) *Process {
+func newProcess(args processArgs) *Process {
 	return &Process{
 		processArgs: args,
 		log:         logger.NewLogger(fmt.Sprintf("process::%s", args.name)),
@@ -28,9 +30,12 @@ func NewProcess(args processArgs) *Process {
 }
 
 func (p *Process) Run() {
-
 Start:
-	p.Cmd = exec.Command(p.command)
+	p.log.Infof("start")
+	p.Cmd = exec.Command(p.shell, "-c", p.command)
+	p.Cmd.Env = os.Environ()
+	p.Cmd.Stdout = os.Stdout
+	p.Cmd.Stderr = os.Stderr
 	err := p.Cmd.Start()
 	if err != nil {
 		p.log.Errorf("exec process error: %s, restart after: %s", err, p.restartInterval)
