@@ -3,7 +3,6 @@ package daemon
 import (
 	"github.com/adminium/logger"
 	"sync/atomic"
-	"syscall"
 )
 
 var log = logger.NewLogger("daemon")
@@ -56,19 +55,24 @@ func (d *Daemon) Stop() {
 	}
 	for _, v := range d.processes {
 		if v.Cmd != nil {
-			err := v.Cmd.Process.Signal(syscall.SIGTERM)
+			err := v.Cmd.Process.Kill()
 			if err != nil {
-				log.Errorf("send SIGTERM to process: %s eror: %v", v.name, err)
-				err = v.Cmd.Process.Kill()
-				if err != nil {
-					log.Errorf("kill process: %s error: %v", v.name, err)
-				}
-			} else {
-				err = v.Cmd.Process.Release()
-				if err != nil {
-					log.Errorf("release process: %s error: %v", v.name, err)
-				}
+				log.Errorf("kill process: %s error: %v", v.name, err)
 			}
 		}
+		//	err := v.Cmd.Process.Signal(syscall.SIGTERM)
+		//	if err != nil {
+		//		log.Errorf("send SIGTERM to process: %s eror: %v", v.name, err)
+		//		err = v.Cmd.Process.Kill()
+		//		if err != nil {
+		//			log.Errorf("kill process: %s error: %v", v.name, err)
+		//		}
+		//	} else {
+		//		err = v.Cmd.Process.Release()
+		//		if err != nil {
+		//			log.Errorf("release process: %s error: %v", v.name, err)
+		//		}
+		//	}
+		//}
 	}
 }
