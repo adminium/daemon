@@ -2,18 +2,26 @@ package daemon
 
 import (
 	"fmt"
+	"os"
 	"strings"
+	"syscall"
 	"time"
 )
 
 var (
-	DefaultRestartInterval = 1 * time.Second
+	DefaultRestartInterval = 3 * time.Second
+	DefaultStopSignal      = syscall.SIGTERM
+	DefaultStopWaitTime    = 3 * time.Second
 )
 
 type Config struct {
 	Shell           string           `toml:"shell"`
 	RestartInterval string           `toml:"restart_interval"`
+	StopSignal      string           `toml:"stop_signal"`
+	StopWaitTime    string           `toml:"stop_wait_seconds"`
 	Processes       []*ProcessConfig `toml:"processes"`
+	stopSignal      os.Signal
+	stopWaitTime    time.Duration
 	restartInterval time.Duration
 }
 
@@ -30,6 +38,22 @@ func (c *Config) parse() (err error) {
 		c.restartInterval, err = time.ParseDuration(c.RestartInterval)
 		if err != nil {
 			err = fmt.Errorf("parse restart interval: %s error: %s", c.RestartInterval, err)
+			return
+		}
+	}
+
+	if c.StopSignal != "" {
+		s, ok := signals[c.StopSignal]
+		if !ok {
+			err = fmt.Errorf("unknown stop signal: %s", c.StopSignal)
+		}
+		c.stopSignal = s
+	}
+
+	if c.StopWaitTime != "" {
+		c.stopWaitTime, err = time.ParseDuration(c.StopWaitTime)
+		if err != nil {
+			err = fmt.Errorf("parse stop wait time: %s error: %s", c.StopWaitTime, err)
 			return
 		}
 	}
@@ -66,7 +90,9 @@ type ProcessConfig struct {
 	Command         string `toml:"command"`
 	RestartInterval string `toml:"restart_interval"`
 	StopSignal      string `toml:"stop_signal"`
-	StopWaitSeconds int    `toml:"stop_wait_seconds"`
+	StopWaitTime    string `toml:"stop_wait_seconds"`
+	stopSignal      os.Signal
+	stopWaitTime    time.Duration
 	restartInterval time.Duration
 }
 
@@ -77,6 +103,22 @@ func (p *ProcessConfig) parse() (err error) {
 			return
 		}
 	}
+	if p.StopSignal != "" {
+		s, ok := signals[p.StopSignal]
+		if !ok {
+			err = fmt.Errorf("unknown stop signal: %s", p.StopSignal)
+		}
+		p.stopSignal = s
+	}
+
+	if p.StopWaitTime != "" {
+		p.stopWaitTime, err = time.ParseDuration(p.StopWaitTime)
+		if err != nil {
+			err = fmt.Errorf("parse stop wait time: %s error: %s", p.StopWaitTime, err)
+			return
+		}
+	}
+
 	return
 }
 
@@ -88,4 +130,24 @@ func (p *ProcessConfig) getRestartInterval(conf Config) time.Duration {
 		return conf.restartInterval
 	}
 	return DefaultRestartInterval
+}
+
+func (p *ProcessConfig) getStopSignal(conf Config) os.Signal {
+	if p.stopSignal != nil {
+		return p.stopSignal
+	}
+	if conf.stopSignal != nil {
+		return conf.stopSignal
+	}
+	return DefaultStopSignal
+}
+
+func (p *ProcessConfig) getStopWaitTime(conf Config) time.Duration {
+	if p.stopWaitTime > 0 {
+		return p.stopWaitTime
+	}
+	if conf.stopWaitTime > 0 {
+		return conf.stopWaitTime
+	}
+	return DefaultStopWaitTime
 }

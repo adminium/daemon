@@ -1,7 +1,9 @@
 package daemon
 
 import (
+	"github.com/adminium/exit"
 	"github.com/adminium/logger"
+	"sync"
 	"sync/atomic"
 )
 
@@ -29,6 +31,18 @@ func (d *Daemon) init() (err error) {
 }
 
 func (d *Daemon) Run() (err error) {
+	err = d.Start()
+	if err != nil {
+		return
+	}
+	exit.Clean(func() {
+		d.Stop()
+	})
+	exit.Wait()
+	return
+}
+
+func (d *Daemon) Start() (err error) {
 	err = d.init()
 	if err != nil {
 		return
@@ -38,8 +52,10 @@ func (d *Daemon) Run() (err error) {
 			p := newProcess(processArgs{
 				name:            v.Name,
 				command:         v.Command,
-				restartInterval: v.getRestartInterval(d.conf),
 				shell:           d.conf.getShell(),
+				restartInterval: v.getRestartInterval(d.conf),
+				stopSignal:      v.getStopSignal(d.conf),
+				stopWaitTime:    v.getStopWaitTime(d.conf),
 				stopped:         d.stopped,
 			})
 			d.processes = append(d.processes, p)
@@ -53,26 +69,11 @@ func (d *Daemon) Stop() {
 	if !d.stopped.CompareAndSwap(false, true) {
 		return
 	}
+	wg := &sync.WaitGroup{}
+	wg.Add(len(d.processes))
 	for _, v := range d.processes {
-		if v.Cmd != nil {
-			err := v.Cmd.Process.Kill()
-			if err != nil {
-				log.Errorf("kill process: %s error: %v", v.name, err)
-			}
-		}
-		//	err := v.Cmd.Process.Signal(syscall.SIGTERM)
-		//	if err != nil {
-		//		log.Errorf("send SIGTERM to process: %s eror: %v", v.name, err)
-		//		err = v.Cmd.Process.Kill()
-		//		if err != nil {
-		//			log.Errorf("kill process: %s error: %v", v.name, err)
-		//		}
-		//	} else {
-		//		err = v.Cmd.Process.Release()
-		//		if err != nil {
-		//			log.Errorf("release process: %s error: %v", v.name, err)
-		//		}
-		//	}
-		//}
+		p := v
+		go p.Stop(wg)
 	}
+	wg.Wait()
 }
