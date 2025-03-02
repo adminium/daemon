@@ -9,16 +9,16 @@ import (
 )
 
 var (
-	DefaultRestartInterval = 3 * time.Second
+	DefaultRestartWaitTime = 3 * time.Second
 	DefaultStopSignal      = syscall.SIGTERM
-	DefaultStopWaitTime    = 3 * time.Second
+	DefaultStopWaitTime    = 10 * time.Second
 )
 
 type Config struct {
 	Shell           string           `toml:"shell"`
-	RestartInterval string           `toml:"restart_interval"`
+	RestartWaitTime string           `toml:"restart_wait_time"`
 	StopSignal      string           `toml:"stop_signal"`
-	StopWaitTime    string           `toml:"stop_wait_seconds"`
+	StopWaitTime    string           `toml:"stop_wait_time"`
 	Processes       []*ProcessConfig `toml:"processes"`
 	stopSignal      os.Signal
 	stopWaitTime    time.Duration
@@ -34,10 +34,10 @@ func (c *Config) getShell() string {
 
 func (c *Config) parse() (err error) {
 
-	if c.RestartInterval != "" {
-		c.restartInterval, err = time.ParseDuration(c.RestartInterval)
+	if c.RestartWaitTime != "" {
+		c.restartInterval, err = time.ParseDuration(c.RestartWaitTime)
 		if err != nil {
-			err = fmt.Errorf("parse restart interval: %s error: %s", c.RestartInterval, err)
+			err = fmt.Errorf("parse restart interval: %s error: %s", c.RestartWaitTime, err)
 			return
 		}
 	}
@@ -88,17 +88,17 @@ func (c *Config) parse() (err error) {
 type ProcessConfig struct {
 	Name            string `toml:"name"`
 	Command         string `toml:"command"`
-	RestartInterval string `toml:"restart_interval"`
+	RestartWaitTime string `toml:"restart_wait_time"`
 	StopSignal      string `toml:"stop_signal"`
-	StopWaitTime    string `toml:"stop_wait_seconds"`
+	StopWaitTime    string `toml:"stop_wait_time"`
 	stopSignal      os.Signal
 	stopWaitTime    time.Duration
 	restartInterval time.Duration
 }
 
 func (p *ProcessConfig) parse() (err error) {
-	if p.RestartInterval != "" {
-		p.restartInterval, err = time.ParseDuration(p.RestartInterval)
+	if p.RestartWaitTime != "" {
+		p.restartInterval, err = time.ParseDuration(p.RestartWaitTime)
 		if err != nil {
 			return
 		}
@@ -129,7 +129,7 @@ func (p *ProcessConfig) getRestartInterval(conf Config) time.Duration {
 	if conf.restartInterval > 0 {
 		return conf.restartInterval
 	}
-	return DefaultRestartInterval
+	return DefaultRestartWaitTime
 }
 
 func (p *ProcessConfig) getStopSignal(conf Config) os.Signal {

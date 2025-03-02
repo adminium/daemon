@@ -12,7 +12,7 @@ func TestConfig(t *testing.T) {
 
 	c := &Config{
 		LogDir:          "./logs",
-		RestartInterval: (10 * time.Hour).String(),
+		RestartWaitTime: (10 * time.Hour).String(),
 		Processes:       nil,
 	}
 
