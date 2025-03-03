@@ -25,14 +25,14 @@ type processArgs struct {
 func newProcess(args processArgs) *Process {
 	return &Process{
 		processArgs: args,
-		log:         logger.NewLogger(fmt.Sprintf("process::%s", args.name)),
+		log:         NewLogger(fmt.Sprintf("process::%s", args.name)),
 	}
 }
 
 type Process struct {
 	processArgs
 	*exec.Cmd
-	log *logger.Logger
+	log logger.EventLogger
 }
 
 func (p *Process) Run() {
@@ -51,11 +51,11 @@ Start:
 
 	_, err = p.Cmd.Process.Wait()
 	if err != nil {
-		p.log.Errorf("wait process error: %s", err)
+		p.log.Warnf("wait process error: %s", err)
 	}
 	err = p.Cmd.Process.Kill()
 	if err == nil {
-		p.log.Errorf("kill process error: %s", err)
+		p.log.Warnf("kill process error: %s", err)
 	}
 
 	if p.stopped.Load() {
@@ -73,7 +73,7 @@ func (p *Process) Stop(wg *sync.WaitGroup) {
 	go func() {
 		err := p.Cmd.Process.Signal(p.stopSignal)
 		if err != nil {
-			log.Errorf("send signal: %s to process: %s eror: %v", p.stopSignal.String(), p.name, err)
+			Log.Errorf("send signal: %s to process: %s eror: %v", p.stopSignal.String(), p.name, err)
 			return
 		}
 	}()

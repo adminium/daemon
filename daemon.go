@@ -7,7 +7,11 @@ import (
 	"sync/atomic"
 )
 
-var log = logger.NewLogger("daemon")
+var Log logger.EventLogger = logger.NewLogger("daemon")
+
+var NewLogger = func(module string) logger.EventLogger {
+	return logger.NewLogger(module)
+}
 
 func NewDaemon(conf Config) *Daemon {
 	return &Daemon{
